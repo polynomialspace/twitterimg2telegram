@@ -81,8 +81,8 @@ func main() {
 		os.Exit(1)
 	}()
 
+	/* Twitter scraper loop */
 	c := make(chan SendPhoto)
-
 	go func() {
 		for iuser, user := range cfg.Twitter.Users {
 			tweets := make([]*twitterscraper.Result, 0)
@@ -115,11 +115,21 @@ func main() {
 		}
 	}()
 
+	/* GCR healthcheck ... */
+	go func() {
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+		log.Printf("Listening on port %s to make GCR happy : )", port)
+		log.Fatal(http.ListenAndServe(":"+port, nil))
+	}()
+
+	/* Telegram posting runner */
 	message := new(bytes.Buffer)
 	encoder := json.NewEncoder(message)
 	encoder.SetEscapeHTML(false)
 	telegramAPIURL := `https://api.telegram.org/bot` + cfg.Telegram.ApiKey
-
 	for {
 		photo := <-c
 		encoder.Encode(photo)
