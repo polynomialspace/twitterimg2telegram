@@ -110,9 +110,8 @@ func main() {
 				}
 			}
 			tweets = tweets[:0]
-
-			time.Sleep(time.Second * time.Duration(cfg.Twitter.PollTime))
 		}
+		time.Sleep(time.Second * time.Duration(cfg.Twitter.PollTime))
 	}()
 
 	/* GCR healthcheck ... */
@@ -121,7 +120,16 @@ func main() {
 		if port == "" {
 			port = "8080"
 		}
+
 		log.Printf("Listening on port %s to make GCR happy : )", port)
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			/* This is terrible */
+			cfgData, err := yaml.Marshal(cfg)
+			if err != nil {
+				log.Println(err)
+			}
+			w.Write(cfgData)
+		})
 		log.Fatal(http.ListenAndServe(":"+port, nil))
 	}()
 
