@@ -80,8 +80,6 @@ func main() {
 		cfg.Stateful = true
 	}
 
-	fmt.Println(cfg.Stateful)
-
 	var srv *sheets.Service
 	if !cfg.Stateful {
 		sheetsKey, err := secrets.Get(cfg.Google.SecretsProjID, "client_secret_json")
@@ -201,7 +199,7 @@ func scrapeTwitter(c chan<- SendPhoto, cfg Config, srv *sheets.Service) {
 			}
 			tweets = tweets[:0]
 			sheetValues = append(sheetValues, []interface{}{
-				user.User, user.Last,
+				cfg.Twitter.Users[iuser].User, cfg.Twitter.Users[iuser].Last,
 			})
 
 		}
