@@ -20,5 +20,8 @@ func Get(projectID string, secret string) ([]byte, error) {
 		Name: baseName + secret + versions,
 	}
 	response, err := client.AccessSecretVersion(ctx, accessRequest)
+	if err != nil {
+		return nil, err
+	}
 	return response.Payload.GetData(), err
 }
