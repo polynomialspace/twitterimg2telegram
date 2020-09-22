@@ -35,17 +35,19 @@ type Telegram struct {
 	ApiKey   string `mapstructure:"apikey"`
 }
 type Google struct {
-	SheetsID      string `mapstructure:"sheets_id"`
-	SheetsRange   string `mapstructure:"sheets_range"`
+	SheetsID    string `mapstructure:"sheets_id"`
+	SheetsRange string `mapstructure:"sheets_range"`
+	SheetsToken []byte `mapstructure:"sheets_token,omitempty"`
+	SheetsKey   []byte `mapstructure:"sheets_key,omitempty"`
+
 	SecretsProjID string `mapstructure:"secrets_project_id,omitempty"`
-	SheetsToken   []byte `mapstructure:"sheets_token,omitempty"`
 }
 
 type Config struct {
-	Twitter  `mapstructure:"twitter"`
-	Telegram `mapstructure:"telegram"`
-	Google   `mapstructure:"google,omitempty"`
-	Stateful bool `mapstructure:"-"` //false: run once, gsheets to store state. true: loop and writeback to config.yml
+	Twitter   `mapstructure:"twitter"`
+	Telegram  `mapstructure:"telegram"`
+	Google    `mapstructure:"google,omitempty"`
+	Stateless bool `mapstructure:"stateful,omitempty"` //false: run once, gsheets to store state. true: loop and writeback to config.yml
 }
 
 type SendPhoto struct {
@@ -77,37 +79,38 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	if cfg.Google.SecretsProjID == "" || cfg.Google.SheetsID == "" {
-		cfg.Stateful = true
-	}
-
 	var srv *sheets.Service
-	if !cfg.Stateful {
-		sheetsKey, err := secrets.Get(cfg.Google.SecretsProjID, "client_secret_json")
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		if len(cfg.Google.SheetsToken) == 0 {
-			cfg.Google.SheetsToken, err = secrets.Get(cfg.Google.SecretsProjID, "token_json")
+	if cfg.Stateless {
+		if len(cfg.Google.SheetsKey) == 0 {
+			sheetsKey, err := secrets.Get(cfg.Google.SecretsProjID, "client_secret_json")
 			if err != nil {
 				log.Fatalln(err)
 			}
+			cfg.Google.SheetsKey = sheetsKey
 		}
-		srv, err = gsheets.NewSheetFromToken(sheetsKey, cfg.Google.SheetsToken)
+
+		if len(cfg.Google.SheetsToken) == 0 {
+			sheetsToken, err := secrets.Get(cfg.Google.SecretsProjID, "token_json")
+			if err != nil {
+				log.Fatalln(err)
+			}
+			cfg.Google.SheetsToken = sheetsToken
+		}
+
+		srv, err := gsheets.NewSheetFromToken(cfg.Google.SheetsKey, cfg.Google.SheetsToken)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		readRange := cfg.Google.SheetsRange
-		resp, err := srv.Spreadsheets.Values.Get(cfg.Google.SheetsID, readRange).Do()
 
+		resp, err := srv.Spreadsheets.Values.Get(cfg.Google.SheetsID, cfg.Google.SheetsRange).Do()
 		if err != nil {
 			log.Fatalf("Unable to retrieve data from sheet: %v", err)
 		}
 
 		if len(resp.Values) == 0 {
-			log.Println("No data found.")
+			log.Println("No data retrieved from sheets.")
 		}
+		/* Populate Twitter struct from sheet values */
 		for _, row := range resp.Values {
 			for iuser, user := range cfg.Twitter.Users {
 				if row[0] == user.User {
@@ -124,6 +127,11 @@ func main() {
 				}
 			}
 		}
+	}
+
+	/* GCR healthcheck/trigger */
+	if cfg.Stateless {
+		go HTTPHealthCheck()
 	}
 
 	/* Twitter scraper loop */
@@ -157,20 +165,6 @@ func main() {
 		}
 
 	}
-
-	/* GCR healthcheck ... */
-	go func() {
-		port := os.Getenv("PORT")
-		if port == "" {
-			port = "8080"
-		}
-
-		log.Printf("Listening on port %s to make GCR happy : )", port)
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "ok")
-		})
-		log.Fatal(http.ListenAndServe(":"+port, nil))
-	}()
 
 }
 
@@ -235,4 +229,17 @@ func scrapeTwitter(c chan<- SendPhoto, cfg Config, srv *sheets.Service) {
 	}
 
 	close(c)
+}
+
+func HTTPHealthCheck() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Listening on port %s to make GCR happy : )", port)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "ok")
+	})
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
