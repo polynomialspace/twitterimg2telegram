@@ -18,7 +18,8 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 
-	"github.com/polynomialspace/twitterimg2telegram/gsheets"
+	//"github.com/polynomialspace/twitterimg2telegram/gsheets"
+	"./gsheets"
 	"github.com/polynomialspace/twitterimg2telegram/secrets"
 )
 
@@ -38,6 +39,7 @@ type Google struct {
 	SheetsID      string `mapstructure:"sheets_id"`
 	SheetsRange   string `mapstructure:"sheets_range"`
 	SecretsProjID string `mapstructure:"secrets_project_id,omitempty"`
+	SheetsToken   []byte `mapstructure:"sheets_token,omitempty"`
 }
 
 type Config struct {
@@ -87,7 +89,13 @@ func main() {
 			log.Fatalln(err)
 		}
 
-		srv, err = gsheets.NewSheet(sheetsKey)
+		if len(cfg.Google.SheetsToken) == 0 {
+			cfg.Google.SheetsToken, err = secrets.Get(cfg.Google.SecretsProjID, "token_json")
+			if err != nil {
+				log.Fatalln(err)
+			}
+		}
+		srv, err = gsheets.NewSheetFromToken(sheetsKey, cfg.Google.SheetsToken)
 		if err != nil {
 			log.Fatalln(err)
 		}

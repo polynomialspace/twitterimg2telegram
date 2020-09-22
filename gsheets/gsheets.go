@@ -77,3 +77,19 @@ func NewSheet(jsonKey []byte) (srv *sheets.Service, err error) {
 	client := getClient(config)
 	return sheets.New(client)
 }
+
+func NewSheetFromToken(jsonKey []byte, token []byte) (srv *sheets.Service, err error) {
+	apiurl := "https://www.googleapis.com/auth/spreadsheets"
+	config, err := google.ConfigFromJSON(jsonKey, apiurl)
+	if err != nil {
+		return
+	}
+
+	tok := &oauth2.Token{}
+	err = json.Unmarshal(token, &tok)
+	if err != nil {
+		return
+	}
+	client := config.Client(context.Background(), tok)
+	return sheets.New(client)
+}
