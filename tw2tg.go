@@ -79,7 +79,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	var srv *sheets.Service
+	var sheetsService *sheets.Service
 	if cfg.Stateless {
 		if len(cfg.Google.SheetsKey) == 0 {
 			sheetsKey, err := secrets.Get(cfg.Google.SecretsProjID, "client_secret_json")
@@ -101,6 +101,7 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
+		sheetsService = srv
 
 		resp, err := srv.Spreadsheets.Values.Get(cfg.Google.SheetsID, cfg.Google.SheetsRange).Do()
 		if err != nil {
@@ -136,7 +137,7 @@ func main() {
 
 	/* Twitter scraper loop */
 	c := make(chan SendPhoto)
-	go scrapeTwitter(c, cfg, srv)
+	go scrapeTwitter(c, cfg, sheetsService)
 
 	/* Telegram posting runner */
 	message := new(bytes.Buffer)
