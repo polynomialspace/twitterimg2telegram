@@ -18,8 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 
-	//"github.com/polynomialspace/twitterimg2telegram/gsheets"
-	"./gsheets"
+	"github.com/polynomialspace/twitterimg2telegram/gsheets"
 	"github.com/polynomialspace/twitterimg2telegram/secrets"
 )
 
