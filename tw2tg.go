@@ -47,7 +47,7 @@ type Config struct {
 	Twitter   `mapstructure:"twitter"`
 	Telegram  `mapstructure:"telegram"`
 	Google    `mapstructure:"google,omitempty"`
-	Stateless bool `mapstructure:"stateful,omitempty"` //false: run once, gsheets to store state. true: loop and writeback to config.yml
+	Stateless bool `mapstructure:"stateless,omitempty"` //false: run once, gsheets to store state. true: loop and writeback to config.yml
 }
 
 type SendPhoto struct {
@@ -163,7 +163,6 @@ func main() {
 		if !tgResponse.Ok {
 			log.Fatalln(tgResponse.Description)
 		}
-
 	}
 
 }
