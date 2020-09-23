@@ -1,6 +1,4 @@
 .*.sw*
 config.yml
 blah
-client_secret.json
-token.json
 !.gitignore
