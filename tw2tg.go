@@ -176,6 +176,9 @@ func scrapeTwitter(c chan<- SendPhoto, cfg Config, srv *sheets.Service) {
 		for iuser, user := range cfg.Twitter.Users {
 			tweets := make([]*twitterscraper.Result, 0)
 			for tweet := range twitterscraper.GetTweets(context.Background(), user.User, 32) {
+				if tweet.IsRetweet {
+					continue
+				}
 				tweets = append(tweets, tweet)
 			}
 
